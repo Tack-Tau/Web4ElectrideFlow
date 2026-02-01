@@ -1,0 +1,323 @@
+{% extends 'layout.html' %}
+
+{% macro atoms() %}
+<div class="viewer-card">
+  <div id="appdiv" class="viewer-frame"></div>
+  <div class="row align-items-center mt-2 gy-2">
+    <div class="col-sm-4">
+      <a class="btn btn-primary btn-sm w-100" href="/gui/{{ row.id }}">Open ASE's GUI</a>
+    </div>
+    <div class="col-sm-4 px-1">
+      <div class="btn-group pull-right w-100">
+        <button type="button" class="btn btn-primary dropdown-toggle btn-sm w-100"
+                data-bs-toggle="dropdown">
+          Unit cell <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li><a onclick="repeatCell(1, 1, 1);">1x1x1</a></li>
+          <li><a onclick="repeatCell({{ n1 }}, {{ n2 }}, {{ n3 }});">
+              {{ n1 }}x{{ n2 }}x{{ n3 }}</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="btn-group pull-right w-100">
+        <button type="button" class="btn btn-primary dropdown-toggle btn-sm w-100"
+                data-bs-toggle="dropdown">
+          Download <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/xyz">xyz</a></li>
+          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/json">json</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <small class="text-muted d-block mt-2">If the GUI button does not open remotely, use the 3D view above or download the structure.</small>
+</div>
+{% endmacro %}
+
+{% macro cell() %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Axis</th>
+      <th>x</th>
+      <th>y</th>
+      <th>z</th>
+      <th>Periodic</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for axis in dct.cell %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      {% for a in axis %} <td>{{ a }}</td>{% endfor %}
+      <td>{{ row.pbc[loop.index0] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<table class="table table-striped">
+  <tbody>
+    <tr>
+      <td>Lengths:</td>
+      {% for L in dct.lengths %}<td>{{ L }}</td>{% endfor %}
+    </tr>
+    <tr>
+      <td>Angles:</td>
+      {% for a in dct.angles %}<td>{{ a }}</td>{% endfor %}
+    </tr>
+  </tbody>
+</table>
+{% endmacro %}
+
+
+{% block title %}
+Summary
+{% endblock %}
+
+{% set n1, n2, n3 = dct.size %}
+
+{% block head %}
+<script src="{{ url_for('static', filename='jsmol/JSmol.min.js') }}"></script>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<script>
+jmol_isReady = function(applet)
+{
+    Jmol._getElement(applet, "appletdiv").style.border="1px solid lightgray";
+    Jmol.script(jmolApplet0, "set displaycellparameters false;")
+    Jmol.script(jmolApplet0,
+    "load /atoms/{{ project.name }}/{{ row.id }}/cif { {{ n1 }} {{ n2 }} {{ n3 }} };");
+    }
+</script>
+
+<script src="{{ url_for('static', filename='row.js') }}"></script>
+
+<script>
+// Load and display convex hull plot when user expands the section
+document.addEventListener('DOMContentLoaded', function() {
+    const formula = "{{ dct.formula|safe }}";
+    const projectName = "{{ project.name }}";
+    let hullPlotLoaded = false;
+    
+    // Extract chemical system from formula
+    const elements = formula.replace(/[0-9\(\)]/g, '').match(/[A-Z][a-z]*/g);
+    if (!elements || elements.length === 0) return;
+    
+    const uniqueElements = [...new Set(elements)].sort();
+    const chemsys = uniqueElements.join('-');
+    
+    // Determine system type
+    const systemType = uniqueElements.length === 2 ? 'binary' : 
+                       uniqueElements.length === 3 ? 'ternary' : null;
+    
+    if (!systemType) return;
+    
+    // Listen for collapse show event
+    const collapseElement = document.getElementById('hullPlotCollapse');
+    collapseElement.addEventListener('show.bs.collapse', function () {
+        if (hullPlotLoaded) return; // Only load once
+        
+        const hullDiv = document.getElementById('hull-plot');
+        hullDiv.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Generating convex hull plot for ' + chemsys + '...</p></div>';
+        
+        // Fetch hull plot data
+        fetch('/api/hull/' + projectName + '/' + chemsys)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    hullDiv.innerHTML = '<div class="alert alert-warning">Could not generate hull plot: ' + data.error + '</div>';
+                    return;
+                }
+                
+                if (data.message) {
+                    hullDiv.innerHTML = '<div class="alert alert-info">' + data.message + '</div>';
+                    return;
+                }
+                
+                // Configure Plotly layout
+                const layout = data.layout || {};
+                layout.autosize = true;
+                layout.paper_bgcolor = 'rgba(0,0,0,0)';
+                layout.plot_bgcolor = 'rgba(255,255,255,0.05)';
+                layout.font = { color: '#e0e0e0', size: 12 };
+                layout.margin = { l: 60, r: 30, t: 50, b: 60 };
+                
+                if (layout.xaxis) {
+                    layout.xaxis.gridcolor = 'rgba(255,255,255,0.1)';
+                    layout.xaxis.zerolinecolor = 'rgba(255,255,255,0.2)';
+                }
+                if (layout.yaxis) {
+                    layout.yaxis.gridcolor = 'rgba(255,255,255,0.1)';
+                    layout.yaxis.zerolinecolor = 'rgba(255,255,255,0.2)';
+                }
+                
+                // Render plot
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    modeBarButtonsToRemove: ['toImage'],
+                    displaylogo: false
+                };
+                
+                Plotly.newPlot('hull-plot', data.data, layout, config);
+                hullPlotLoaded = true;
+            })
+            .catch(error => {
+                console.error('Error loading hull plot:', error);
+                hullDiv.innerHTML = '<div class="alert alert-danger">Error loading hull plot. Please try refreshing the page.</div>';
+            });
+    });
+});
+</script>
+{% endblock %}
+
+{% block navbar %}
+<li>
+  <a href="/{{ project.name }}/">Back to search page</a>
+</li>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-shell">
+  <div class="container py-4">
+    <a href="/{{ project.name }}/" class="mb-3 d-inline-block">Back to search page</a>
+    <h1 class="mb-3">{{ dct.formula|safe }}</h1>
+
+    <div class="row g-4 align-items-start">
+      <div class="col-xl-6">
+        <h4 class="card-title">Structure</h4>
+        {{ atoms() }}
+      </div>
+      <div class="col-xl-6">
+        <div class="card p-3">
+          <h5 class="mb-2">Unit cell</h5>
+          {{ cell() }}
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-4 p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">Convex Hull Phase Diagram</h4>
+        <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#hullPlotCollapse" aria-expanded="false" aria-controls="hullPlotCollapse">
+          <span class="collapse-icon">▼</span> Show/Hide
+        </button>
+      </div>
+      <div class="collapse" id="hullPlotCollapse">
+        <div class="mt-3">
+          <div id="hull-plot" style="width: 100%; min-height: 500px;"></div>
+          <small class="text-muted mt-2 d-block">
+            Interactive plot: Hover for details, drag to zoom, double-click to reset.
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-4 p-3">
+      <h4 class="card-title">Properties</h4>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Description</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% set visible_keys = ['mace_energy', 'formula', 'pearson_symbol', 'space_group_number', 'density', 'pbc', 'dimension', 'wps', 'volume', 'topology', 'natoms', 'mass'] %}
+          {% for key, desc, val in dct.table %}
+            {% if key in visible_keys %}
+            <tr>
+              <td> {{ key }} </td>
+              <td> {{ desc }} </td>
+              <td> {{ val|safe }} </td>
+            </tr>
+            {% endif %}
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const formula = "{{ dct.formula|safe }}";
+  const projectName = "{{ project.name }}";
+  
+  // Extract chemical system from formula
+  const elementPattern = /([A-Z][a-z]?)/g;
+  let elements = [...new Set(formula.match(elementPattern))];
+  elements.sort();
+  const chemsys = elements.join('-');
+  
+  // Load plot when collapse is shown
+  const collapseElement = document.getElementById('hullPlotCollapse');
+  let plotLoaded = false;
+  
+  collapseElement.addEventListener('show.bs.collapse', function () {
+    if (plotLoaded) return;
+    
+    const hullDiv = document.getElementById('hull-plot');
+    hullDiv.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Generating convex hull plot for ' + chemsys + '...</p></div>';
+    
+    fetch('/api/hull/' + projectName + '/' + chemsys)
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          hullDiv.innerHTML = '<div class="alert alert-danger">Error: ' + data.error + '</div>';
+          return;
+        }
+        
+        if (data.message) {
+          hullDiv.innerHTML = '<div class="alert alert-info">' + data.message + '</div>';
+          return;
+        }
+        
+        const layout = {
+          ...data.layout,
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(255,255,255,0.05)',
+          font: { color: '#e0e0e0', size: 12 },
+          xaxis: { ...data.layout.xaxis, gridcolor: 'rgba(255,255,255,0.1)' },
+          yaxis: { ...data.layout.yaxis, gridcolor: 'rgba(255,255,255,0.1)' },
+          hovermode: 'closest',
+          showlegend: true,
+          legend: { x: 0.7, y: 1.0, bgcolor: 'rgba(0,0,0,0.5)' }
+        };
+        
+        const config = {
+          responsive: true,
+          displayModeBar: true,
+          modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+          displaylogo: false
+        };
+        
+        Plotly.newPlot('hull-plot', data.data, layout, config);
+        plotLoaded = true;
+      })
+      .catch(error => {
+        console.error('Hull plot error:', error);
+        hullDiv.innerHTML = '<div class="alert alert-danger">Failed to load hull plot: ' + error.message + '</div>';
+      });
+  });
+  
+  // Toggle icon on collapse
+  const toggleBtn = document.querySelector('[data-bs-target="#hullPlotCollapse"]');
+  collapseElement.addEventListener('shown.bs.collapse', () => {
+    toggleBtn.querySelector('.collapse-icon').textContent = '▲';
+  });
+  collapseElement.addEventListener('hidden.bs.collapse', () => {
+    toggleBtn.querySelector('.collapse-icon').textContent = '▼';
+  });
+});
+</script>
+{% endblock %}

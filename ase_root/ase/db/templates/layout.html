@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+{% include 'style.html' %}
+{% include 'js.html' %}
+{% block head %}
+{% endblock %}
+
+<title>{% block title %}{% endblock %}</title>
+
+  </head>
+
+  <body {% block BodySettings %}{% endblock %}>
+
+    <div class="container-fluid" style="padding: 5px;">
+      <div class="row">
+        <nav class="navbar navbar-default px-1">
+          <div class="container-fluid">
+            <ul class="nav navbar-nav navbar-right">
+              {% block navbar %} {% endblock %}
+
+            </ul>
+          </div>
+        </nav>
+      </div>
+    </div> <!--end of container-->
+
+{% block content %}
+{% endblock %}
+
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-section">
+      <h4>About Inorganic Electride Database</h4>
+      <p>
+        <strong>High-Throughput Computational Discovery of Inorganic Electride Materials</strong>
+      </p>
+      <p class="citation">
+        Powered by the electride_flow workflow for automated electride screening and characterization
+      </p>
+      <p class="arxiv">GitHub: <a href="https://github.com/Tack-Tau/electride_flow" target="_blank">electride_flow</a></p>
+    </div>
+
+    <div class="footer-section">
+      <h4>Contact</h4>
+      <p>
+        <strong>Research Team</strong><br>
+        Materials Modelling and Informatics Group<br>
+        <a href="https://qzhu2017.github.io" target="_blank">Group Website</a>
+      </p>
+    </div>
+
+    <div class="footer-section">
+      <h4>Database Statistics</h4>
+      <p>
+        <strong>Binary Systems:</strong> 513 structures<br>
+        <strong>Ternary Systems:</strong> 178 structures<br>
+        <strong>Total Electrides:</strong> 691 materials<br>
+        <strong>Computational Methods:</strong> DFT (VASP) & MatterSim
+      </p>
+    </div>
+
+    <div class="footer-section">
+      <h4>Citation</h4>
+      <pre><code>@misc{tao2026electride,
+  title={Accelerated Inorganic Electrides Discovery by Generative Models and Hierarchical Screening},
+  author={Tao, Shuo and Zhu, Qiang},
+  year={2026},
+  eprint={2601.21077},
+  archivePrefix={arXiv},
+  primaryClass={cond-mat.mtrl-sci},
+  url={https://arxiv.org/abs/2601.21077}
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2026 Materials Modelling and Informatics Group, UNC Charlotte | Powered by <a href="https://github.com/MaterSim/ElectrideFlow" target="_blank">ElectrideFlow</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

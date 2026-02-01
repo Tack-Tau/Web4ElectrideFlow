@@ -1,0 +1,291 @@
+{% extends 'layout.html' %}
+
+{% block title %}
+Browse ASE Database
+{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', filename='search.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const sessionId = {{ session_id }};
+  const currentProject = '{{ project.name }}';
+  
+  // Highlight active database button
+  if (currentProject.includes('binary')) {
+    document.getElementById('db-binary').classList.add('active');
+  } else if (currentProject.includes('ternary')) {
+    document.getElementById('db-ternary').classList.add('active');
+  }
+  
+  const runSearch = function() {
+    update_table(sessionId, 'query', '0');
+  };
+  
+  // Chemical system search handler
+  window.handleSearch = function() {
+    const query = document.getElementById('formula-result').value.trim();
+    
+    // Check if query is a chemical system (e.g., "Ca-P" or "K-B-O")
+    const chemsysPattern = /^([A-Z][a-z]?)-([A-Z][a-z]?)(-([A-Z][a-z]?))?$/;
+    const match = query.match(chemsysPattern);
+    
+    if (match) {
+      // Count elements
+      const elements = query.split('-').filter(e => e.length > 0);
+      const numElements = elements.length;
+      
+      if (numElements === 2) {
+        // Binary system - redirect to binary database
+        window.location.href = `/binary_final/?query=${encodeURIComponent(query)}`;
+      } else if (numElements === 3) {
+        // Ternary system - redirect to ternary database
+        window.location.href = `/ternary_final/?query=${encodeURIComponent(query)}`;
+      } else {
+        // Invalid chemical system
+        runSearch();
+      }
+    } else {
+      // Regular search
+      runSearch();
+    }
+  };
+  
+  runSearch();
+
+  const quickButtons = document.querySelectorAll('[data-query-value]');
+  const queryInput = document.getElementById('formula-result');
+
+  quickButtons.forEach(function(button) {
+    button.addEventListener('click', function() {
+      queryInput.value = this.getAttribute('data-query-value');
+      handleSearch();
+    });
+  });
+}, false);
+</script>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-shell">
+  <div class="container py-4">
+
+    <div class="row g-4 align-items-stretch">
+      <div class="col-lg-7">
+        <div class="hero-panel h-100">
+          <p class="eyebrow mb-2">High-Throughput Computational Materials Discovery</p>
+          <h1 class="display-5 mb-3">Inorganic Electride Database</h1>
+          
+          <p class="lede mb-3">
+            <strong>ElectrideFlow:</strong> An accelerated materials discovery framework combining diffusion-based generative models
+            with hierarchical thermodynamic and electronic structure screening to identify <strong>264 new electron-rich electride compounds</strong>
+            (290 structures total), including 13 thermodynamically stable electrides.
+          </p>
+
+          <div class="achievement-block mb-4">
+            <div class="achievement-row">
+              <span class="achievement-badge">290 Structures</span>
+              <span class="achievement-badge">251 Binary + 39 Ternary</span>
+              <span class="achievement-badge">264 Within 0.05 eV/atom</span>
+              <span class="achievement-badge">13 Thermodynamically Stable</span>
+              <span class="achievement-badge">arXiv: 2601.21077</span>
+            </div>
+            <p class="achievement-info mt-2">
+              Materials Modelling &amp; Informatics Group (MMI) | <strong>UNC Charlotte</strong>
+            </p>
+          </div>
+
+          <div class="row g-3 mt-2">
+            <div class="col-md-4">
+              <div class="stat-card">
+                <h3>Search</h3>
+                <p>Browse electrides by formula, space group, energy above hull, or N_excess.</p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="stat-card">
+                <h3>Visualize</h3>
+                <p>Interactive 3D structures with JSmol and convex hull phase diagrams with Plotly.</p>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="stat-card">
+                <h3>Analyze</h3>
+                <p>Compare DFT and MatterSim energies, band gaps, and thermodynamic stability.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="search-card">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h4 class="mb-1">Search the database</h4>
+              <p class="mb-0" style="color: var(--muted); font-size: 0.9rem;">Type a formula, chemical system (e.g., Ca-P or K-B-O), or query</p>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Database selector">
+              <button type="button" class="btn btn-outline-primary" id="db-binary" onclick="window.location.href='/binary_final/'">Binary</button>
+              <button type="button" class="btn btn-outline-primary" id="db-ternary" onclick="window.location.href='/ternary_final/'">Ternary</button>
+            </div>
+          </div>
+
+          <form id="mainFormID" class="mt-2" role="search"
+                action="javascript:handleSearch()">
+            <label for="formula-result" class="form-label text-uppercase small" style="letter-spacing:0.08em; color: var(--muted);">Query</label>
+            <div class="d-flex gap-2 align-items-stretch">
+              <input type="text" name="query" id="formula-result"
+                     class="form-control ase-input search-input-lg w-100"
+                     value="{{ q }}"
+                     placeholder="Ca-P, K-B-O, or dft_e_hull<0.05">
+              <button type="submit" class="btn btn-primary flex-shrink-0">Search</button>
+            </div>
+
+            {% block search %}
+            {% endblock search %}
+
+            <div class="quick-filters mt-3">
+              <button type="button" class="btn btn-outline-light btn-sm" data-query-value="electride=True">Electrides Only</button>
+              <button type="button" class="btn btn-outline-light btn-sm" data-query-value="dft_e_hull<0.05">Thermodynamically Stable</button>
+              <button type="button" class="btn btn-outline-light btn-sm" data-query-value="N_excess>0">Excess Electrons</button>
+              <button type="button" class="btn btn-outline-light btn-sm" data-query-value="band_gap>0">Semiconducting</button>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <ul class="list-group mt-3">
+                {% for message in messages %}
+                  <li class="list-group-item list-group-item-warning">{{ message }}</li>
+                {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+
+          </form>
+        </div>
+
+        <div class="info-card mt-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Need syntax reminders?</span>
+            <a class="small" href="https://wiki.fysik.dtu.dk/ase/ase/db/db.html#querying" target="_blank" rel="noreferrer">Query help</a>
+          </div>
+
+          <small class="form-text mt-2">
+            <a data-bs-toggle="collapse" role="button" href="#collapse1" aria-controls="collapse1">Toggle list of keys</a>
+          </small>
+          <div id="collapse1" class="collapse mt-2">
+            <table class="table table-striped">
+            {% for key, keydesc in project.key_descriptions|dictsort %}
+              <tr><td>{{ key }}</td><td>{{ keydesc.longdesc }}</td><td>{{ keydesc.unit|safe }}</td></tr>
+            {% endfor %}
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="database-wrapper" id="database1"></div>
+
+    <section class="about-section mt-5">
+      <div class="about-container">
+        <h2>ElectrideFlow - High-Throughput Inorganic Electride Discovery Workflow</h2>
+        <p class="about-intro">
+          <strong>Accelerated by Generative Models and Hierarchical Prescreening:</strong>
+          A four-stage intelligent workflow for high-throughput inorganic electride discovery.
+        </p>
+
+        <div class="workflow-stages mt-4">
+          <div class="stage-card mb-3">
+            <div class="stage-header">
+              <span class="stage-label">Stage (a)</span>
+              <h4>Chemical Exploration</h4>
+            </div>
+            <p>
+              Generative AI models (MatterGen) explore electron-rich composition space with excess valence electrons 
+              (0 &lt; N<sub>excess</sub> ≤ 4) from electropositive alkaline, alkaline-earth, and early transition metals.
+            </p>
+          </div>
+
+          <div class="stage-card mb-3">
+            <div class="stage-header">
+              <span class="stage-label">Stage (b)</span>
+              <h4>Stability Screening</h4>
+            </div>
+            <p>
+              MatterSim (MLP) pre-screening filters structures by energy above hull to identify thermodynamically 
+              promising candidates (E<sub>ref-hull-MLP</sub> &lt; 0.10 eV/atom).
+            </p>
+          </div>
+
+          <div class="stage-card mb-3">
+            <div class="stage-header">
+              <span class="stage-label">Stage (c)</span>
+              <h4>Electride Identification</h4>
+            </div>
+            <p>
+              Coarse DFT relaxation with ELF &amp; PARCHG topological analysis to identify electride candidates 
+              with localized interstitial electrons (Bader volume &gt; 20 Å³).
+            </p>
+          </div>
+
+          <div class="stage-card mb-3">
+            <div class="stage-header">
+              <span class="stage-label">Stage (d)</span>
+              <h4>Refinement &amp; Validation</h4>
+            </div>
+            <p>
+              Tight DFT relaxation with refined convex hull analysis for final candidate validation, identifying 
+              thermodynamically stable electrides (E<sub>hull-DFT</sub> &lt; 0.05 eV/atom).
+            </p>
+          </div>
+        </div>
+
+        <div class="highlights row g-3 mt-4">
+          <div class="col-md-6 col-lg-3">
+            <div class="highlight-card">
+              <h3>691 Structures</h3>
+              <p>264 new electron-rich compounds including 13 thermodynamically stable electrides</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="highlight-card">
+              <h3>AI-Generated</h3>
+              <p>Diffusion-based generative models (MatterGen) for targeted materials discovery</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="highlight-card">
+              <h3>DFT Validated</h3>
+              <p>Within 0.05 eV/atom above convex hull with VASP calculations</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="highlight-card">
+              <h3>Chemical Space</h3>
+              <p>1,510 binary &amp; 6,654 ternary electropositive metal compositions explored</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="publication mt-4">
+          <h4>Publication</h4>
+          <p class="mb-2">
+            <strong>Accelerated Inorganic Electrides Discovery by Generative Models and Hierarchical Screening</strong><br>
+            <small>Shuo Tao, Qiang Zhu</small><br>
+            <small><em>arXiv:2601.21077 [cond-mat.mtrl-sci] (2026)</em></small>
+          </p>
+          <div class="mt-2">
+            <a href="https://arxiv.org/abs/2601.21077" target="_blank" class="arxiv-link">View on arXiv →</a>
+            <span class="ms-2"><a href="https://github.com/MaterSim/ElectrideFlow" target="_blank" class="arxiv-link">GitHub Repository</a></span>
+            <span class="ms-2"><a href="https://arxiv.org/pdf/2601.21077" target="_blank" class="arxiv-link">Download PDF</a></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+{% endblock content %}
