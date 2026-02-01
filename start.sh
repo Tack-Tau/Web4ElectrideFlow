@@ -12,13 +12,15 @@ mkdir -p "$(dirname "$TARGET_DIR")"
 
 # If a bundled jsmol folder is present, copy it
 if [ -d "jsmol" ]; then
-    if [ ! -d "$TARGET_DIR" ]; then
-        echo "Copying JSmol files to $TARGET_DIR..."
-        cp -r jsmol "$TARGET_DIR"
-        echo "JSmol files copied successfully"
-    else
-        echo "JSmol directory already exists"
+    # Remove any existing symlink or directory
+    if [ -e "$TARGET_DIR" ] || [ -L "$TARGET_DIR" ]; then
+        echo "Removing existing JSmol symlink/directory..."
+        rm -rf "$TARGET_DIR"
     fi
+    
+    echo "Copying JSmol files to $TARGET_DIR..."
+    cp -r jsmol "$TARGET_DIR"
+    echo "JSmol files copied successfully"
 else
     echo "WARNING: JSmol directory not found. Structure viewer will be unavailable."
 fi
