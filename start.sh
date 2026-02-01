@@ -6,17 +6,18 @@
 
 set -e  # Exit immediately on error
 
-# 1. Setup JSmol assets (similar to lego-crystal)
-TARGET_LINK="ase_root/ase/db/static/jsmol"
-mkdir -p "$(dirname "$TARGET_LINK")"
+# 1. Setup JSmol assets (copy instead of symlink for Render compatibility)
+TARGET_DIR="ase_root/ase/db/static/jsmol"
+mkdir -p "$(dirname "$TARGET_DIR")"
 
-# If a bundled jsmol folder is present, link it
+# If a bundled jsmol folder is present, copy it
 if [ -d "jsmol" ]; then
-    if [ ! -e "$TARGET_LINK" ] && [ ! -L "$TARGET_LINK" ]; then
-        echo "Linking JSmol to $TARGET_LINK"
-        ln -s "$PWD/jsmol" "$TARGET_LINK"
-    elif [ -L "$TARGET_LINK" ]; then
-        echo "JSmol link already exists"
+    if [ ! -d "$TARGET_DIR" ]; then
+        echo "Copying JSmol files to $TARGET_DIR..."
+        cp -r jsmol "$TARGET_DIR"
+        echo "JSmol files copied successfully"
+    else
+        echo "JSmol directory already exists"
     fi
 else
     echo "WARNING: JSmol directory not found. Structure viewer will be unavailable."
