@@ -14,6 +14,17 @@ import traceback
 from pathlib import Path
 from io import StringIO
 
+# Mock tkinter to avoid GUI dependencies on headless server
+try:
+    import tkinter
+except ImportError:
+    import types
+    sys.modules['tkinter'] = types.ModuleType('tkinter')
+    sys.modules['_tkinter'] = types.ModuleType('_tkinter')
+
+# Add the bundled ASE to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ase_root'))
+
 from flask import render_template, jsonify, redirect, send_file
 from jinja2 import FileSystemLoader
 
@@ -29,9 +40,6 @@ from utils.hull_plotter import (
     generate_binary_hull_plotly,
     generate_ternary_hull_plotly
 )
-
-# Add the bundled ASE to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ase_root'))
 
 
 class FilteredDatabase:
