@@ -33,4 +33,5 @@ export PORT
 # 3. Run the Flask app
 echo "Starting Electride Database web server on port $PORT..."
 export PYTHONPATH="$PWD/ase_root${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONWARNINGS="ignore::FutureWarning"
 python3 app.py
