@@ -79,15 +79,15 @@ document.addEventListener('DOMContentLoaded', function() {
           
           <p class="lede mb-3">
             <strong>ElectrideFlow:</strong> An accelerated materials discovery framework combining diffusion-based generative models
-            with hierarchical thermodynamic and electronic structure screening to identify <strong>264 new electron-rich electride compounds</strong>
-            (290 structures total), including 13 thermodynamically stable electrides.
+            with hierarchical thermodynamic and electronic structure screening to identify <strong>290 new electron-rich electride compounds</strong>
+            , including 13 thermodynamically stable electrides.
           </p>
 
           <div class="achievement-block mb-4">
             <div class="achievement-row">
               <span class="achievement-badge">290 Structures</span>
               <span class="achievement-badge">251 Binary + 39 Ternary</span>
-              <span class="achievement-badge">264 Within 0.05 eV/atom</span>
+              <span class="achievement-badge">264 Within 0.05 E<sub>hull-DFT</sub></span>
               <span class="achievement-badge">13 Thermodynamically Stable</span>
               <span class="achievement-badge">arXiv: 2601.21077</span>
             </div>
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <input type="text" name="query" id="formula-result"
                      class="form-control ase-input search-input-lg w-100"
                      value="{{ q }}"
-                     placeholder="Ca-P, K-B-O, or dft_e_hull<0.05">
+                     placeholder="Ca-P, K-B-O, or full_dft_e_hull<0.05">
               <button type="submit" class="btn btn-primary flex-shrink-0">Search</button>
             </div>
 
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <div class="quick-filters mt-3">
               <button type="button" class="btn btn-outline-light btn-sm" data-query-value="electride=True">Electrides Only</button>
-              <button type="button" class="btn btn-outline-light btn-sm" data-query-value="dft_e_hull<0.05">Thermodynamically Stable</button>
+              <button type="button" class="btn btn-outline-light btn-sm" data-query-value="full_dft_e_hull<0.05">Thermodynamically Stable</button>
               <button type="button" class="btn btn-outline-light btn-sm" data-query-value="N_excess>0">Excess Electrons</button>
               <button type="button" class="btn btn-outline-light btn-sm" data-query-value="band_gap>0">Semiconducting</button>
             </div>
@@ -245,8 +245,8 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="highlights row g-3 mt-4">
           <div class="col-md-6 col-lg-3">
             <div class="highlight-card">
-              <h3>691 Structures</h3>
-              <p>264 new electron-rich compounds including 13 thermodynamically stable electrides</p>
+              <h3>290 Structures</h3>
+              <p>277 metastable and 13 thermodynamically stable new electron-rich compounds</p>
             </div>
           </div>
           <div class="col-md-6 col-lg-3">
