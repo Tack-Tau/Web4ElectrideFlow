@@ -10,6 +10,7 @@ import os
 import sys
 import json
 import csv
+import re
 import traceback
 from pathlib import Path
 from io import StringIO
@@ -43,7 +44,7 @@ from utils.hull_plotter import (
 
 
 class FilteredDatabase:
-    """Wrapper to filter duplicate structure_ids from database queries"""
+    """Wrapper to filter duplicate structure_ids from database queries and handle chemsys wildcards"""
     
     def __init__(self, db, valid_structure_ids):
         self.db = db
@@ -62,11 +63,90 @@ class FilteredDatabase:
                 self.valid_rowids.add(row.id)
                 seen_structure_ids.add(sid)
     
+    def _match_chemsys_wildcard(self, chemsys_value, pattern):
+        """
+        Check if chemsys matches wildcard pattern.
+        
+        Supports patterns like:
+        - '*' - match all
+        - 'Ca-*' - binary with Ca as first element
+        - '*-Ca' - binary with Ca as second element
+        - 'B-*-O' - ternary with B first and O last
+        - '*-K-O' - ternary with K second and O last
+        - 'B-K-*' - ternary with B first and K second
+        """
+        if '*' not in pattern:
+            return chemsys_value == pattern
+        
+        # Match all
+        if pattern == '*':
+            return True
+        
+        # Split both chemsys and pattern by '-'
+        chemsys_parts = chemsys_value.split('-')
+        pattern_parts = pattern.split('-')
+        
+        # Must have same number of elements
+        if len(chemsys_parts) != len(pattern_parts):
+            return False
+        
+        # Check each position
+        for chem_part, pat_part in zip(chemsys_parts, pattern_parts):
+            if pat_part != '*' and chem_part != pat_part:
+                return False
+        
+        return True
+    
     def select(self, *args, **kwargs):
-        """Filter select to only return valid structure_ids"""
-        for row in self.db.select(*args, **kwargs):
-            if row.id in self.valid_rowids:
+        """Filter select to only return valid structure_ids and handle chemsys wildcards"""
+        # Check if query contains chemsys wildcard
+        query_str = args[0] if args else kwargs.get('query', '')
+        chemsys_wildcard = None
+        
+        if isinstance(query_str, str) and 'chemsys=' in query_str:
+            # Extract chemsys value from query
+            match = re.search(r'chemsys=([^\s,;]+)', query_str)
+            if match:
+                chemsys_value = match.group(1)
+                if '*' in chemsys_value:
+                    chemsys_wildcard = chemsys_value
+                    # Remove chemsys from query since we'll filter manually
+                    query_str = re.sub(r'chemsys=[^\s,;]+[,;]?', '', query_str).strip()
+                    if query_str.endswith(',') or query_str.endswith(';'):
+                        query_str = query_str[:-1].strip()
+                    # Update args or kwargs
+                    if args:
+                        args = (query_str,) + args[1:]
+                    else:
+                        kwargs['query'] = query_str
+        
+        # If we have a wildcard, we need to handle limit/offset manually
+        if chemsys_wildcard:
+            # Extract and remove limit/offset from kwargs
+            original_limit = kwargs.pop('limit', None)
+            original_offset = kwargs.pop('offset', 0)
+            
+            # Get ALL matching rows (no limit)
+            matching_rows = []
+            for row in self.db.select(*args, **kwargs):
+                if row.id in self.valid_rowids:
+                    row_chemsys = row.get('chemsys', '')
+                    if self._match_chemsys_wildcard(row_chemsys, chemsys_wildcard):
+                        matching_rows.append(row)
+            
+            # Apply offset and limit manually
+            if original_offset:
+                matching_rows = matching_rows[original_offset:]
+            if original_limit:
+                matching_rows = matching_rows[:original_limit]
+            
+            for row in matching_rows:
                 yield row
+        else:
+            # No wildcard - normal filtering
+            for row in self.db.select(*args, **kwargs):
+                if row.id in self.valid_rowids:
+                    yield row
     
     def count(self, *args, **kwargs):
         """Return count of valid structures"""

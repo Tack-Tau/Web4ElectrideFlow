@@ -60,3 +60,4 @@ htmlcov/
 *.temp
 ~*
 DEPLOY_CHECKLIST.md
+add_chemsys_to_db.py

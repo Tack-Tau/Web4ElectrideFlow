@@ -24,23 +24,61 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Chemical system search handler
   window.handleSearch = function() {
-    const query = document.getElementById('formula-result').value.trim();
+    let query = document.getElementById('formula-result').value.trim();
     
-    // Check if query is a chemical system (e.g., "Ca-P" or "K-B-O")
+    // Check if query is "chemsys=X-Y" format and canonicalize it
+    const chemsysQueryPattern = /^chemsys=([A-Z][a-z]?(?:-[A-Z][a-z]?)+|\*|-?\*)$/i;
+    const chemsysQueryMatch = query.match(chemsysQueryPattern);
+    
+    if (chemsysQueryMatch) {
+      const chemsysValue = chemsysQueryMatch[1];
+      
+      // Handle wildcards (keep as-is, backend will handle)
+      if (chemsysValue.includes('*')) {
+        // Keep wildcard queries as-is
+        runSearch();
+        return;
+      }
+      
+      // Canonicalize: sort elements alphabetically
+      const elements = chemsysValue.split('-').filter(e => e.length > 0).sort();
+      const canonicalChemsys = elements.join('-');
+      const numElements = elements.length;
+      
+      // Update query with canonical form
+      query = `chemsys=${canonicalChemsys}`;
+      document.getElementById('formula-result').value = query;
+      
+      // Redirect to correct database
+      if (numElements === 2) {
+        window.location.href = `/binary_final/?query=${encodeURIComponent(query)}`;
+      } else if (numElements === 3) {
+        window.location.href = `/ternary_final/?query=${encodeURIComponent(query)}`;
+      } else {
+        runSearch();
+      }
+      return;
+    }
+    
+    // Check if query is a bare chemical system (e.g., "Ca-P" or "K-B-O")
     const chemsysPattern = /^([A-Z][a-z]?)-([A-Z][a-z]?)(-([A-Z][a-z]?))?$/;
     const match = query.match(chemsysPattern);
     
     if (match) {
-      // Count elements
-      const elements = query.split('-').filter(e => e.length > 0);
+      // Extract and canonicalize elements (alphabetically sorted)
+      const elements = query.split('-').filter(e => e.length > 0).sort();
+      const canonicalChemsys = elements.join('-');
       const numElements = elements.length;
       
+      // Convert to chemsys query syntax
+      const chemsysQuery = `chemsys=${canonicalChemsys}`;
+      
       if (numElements === 2) {
-        // Binary system - redirect to binary database
-        window.location.href = `/binary_final/?query=${encodeURIComponent(query)}`;
+        // Binary system - redirect to binary database with chemsys filter
+        window.location.href = `/binary_final/?query=${encodeURIComponent(chemsysQuery)}`;
       } else if (numElements === 3) {
-        // Ternary system - redirect to ternary database
-        window.location.href = `/ternary_final/?query=${encodeURIComponent(query)}`;
+        // Ternary system - redirect to ternary database with chemsys filter
+        window.location.href = `/ternary_final/?query=${encodeURIComponent(chemsysQuery)}`;
       } else {
         // Invalid chemical system
         runSearch();
@@ -124,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
               <h4 class="mb-1">Search the database</h4>
-              <p class="mb-0" style="color: var(--muted); font-size: 0.9rem;">Type a formula, chemical system (e.g., Ca-P or K-B-O), or query</p>
+              <p class="mb-0" style="color: var(--muted); font-size: 0.9rem;">Toggle between binary and ternary systems, or query by keys</p>
             </div>
             <div class="btn-group btn-group-sm" role="group" aria-label="Database selector">
               <button type="button" class="btn btn-outline-primary" id="db-binary" onclick="window.location.href='/binary_final/'">Binary</button>
