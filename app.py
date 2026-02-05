@@ -67,13 +67,16 @@ class FilteredDatabase:
         """
         Check if chemsys matches wildcard pattern.
         
+        Since chemsys is stored in canonical (alphabetically sorted) form,
+        we use element-based matching rather than positional matching.
+        
         Supports patterns like:
         - '*' - match all
-        - 'Ca-*' - binary with Ca as first element
-        - '*-Ca' - binary with Ca as second element
-        - 'B-*-O' - ternary with B first and O last
-        - '*-K-O' - ternary with K second and O last
-        - 'B-K-*' - ternary with B first and K second
+        - 'Ca-*' or '*-Ca' - binary containing Ca
+        - 'B-*-O', '*-K-O', 'O-*-*' - ternary containing specified elements
+        
+        The pattern '*-O-*' will match any ternary system containing O,
+        regardless of O's position in the canonical form.
         """
         if '*' not in pattern:
             return chemsys_value == pattern
@@ -90,12 +93,13 @@ class FilteredDatabase:
         if len(chemsys_parts) != len(pattern_parts):
             return False
         
-        # Check each position
-        for chem_part, pat_part in zip(chemsys_parts, pattern_parts):
-            if pat_part != '*' and chem_part != pat_part:
-                return False
+        # Extract non-wildcard elements from pattern
+        required_elements = set(p for p in pattern_parts if p != '*')
         
-        return True
+        # Check if chemsys contains all required elements
+        chemsys_elements = set(chemsys_parts)
+        
+        return required_elements.issubset(chemsys_elements)
     
     def select(self, *args, **kwargs):
         """Filter select to only return valid structure_ids and handle chemsys wildcards"""
